@@ -2,7 +2,7 @@
 
 client_id = "67a8f61ca9ad53a07e0f732ba385700b"
 name = "lingotuner-translate-app"
-application_url = "https://lingotuner-shopify.vercel.app"
+application_url = "https://shopify-lingotuner-production.up.railway.app"
 embedded = true
 
 [build]
@@ -17,6 +17,6 @@ scopes = "write_products,read_locales,read_translations,write_translations"
 
 [auth]
 redirect_urls = [
-  "https://lingotuner-shopify.vercel.app/auth/callback",
-  "https://lingotuner-shopify.vercel.app/auth/shopify/callback"
+  "https://shopify-lingotuner-production.up.railway.app/auth/callback",
+  "https://shopify-lingotuner-production.up.railway.app/auth/shopify/callback"
 ]
