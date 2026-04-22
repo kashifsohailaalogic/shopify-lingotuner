@@ -1,0 +1,79 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Note that some adapters may set a maximum length for the String type by default, please ensure your strings are long
+// enough when changing adapters.
+// See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Session {
+  id            String    @id
+  shop          String
+  state         String
+  isOnline      Boolean   @default(false)
+  scope         String?
+  expires       DateTime?
+  accessToken   String
+  userId        BigInt?
+  firstName     String?
+  lastName      String?
+  email         String?
+  accountOwner  Boolean   @default(false)
+  locale        String?
+  collaborator  Boolean?  @default(false)
+  emailVerified Boolean?  @default(false)
+  refreshToken        String?
+  refreshTokenExpires DateTime?
+}
+
+model TranslatorSettings {
+  id                Int      @id @default(autoincrement())
+  shop              String   @unique
+  apiKey            String
+  apiBaseUrl        String
+  translationEngine String   @default("Google")
+  fetchedLanguages  String?
+  enabled           Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model TranslationLog {
+  id           Int      @id @default(autoincrement())
+  shop         String
+  level        String
+  contentType  String   @default("others")
+  action       String
+  message      String
+  requestUid   String?
+  itemId       String?
+  statusCode   Int?
+  requestBody  String?
+  responseBody String?
+  metadata     String?
+  createdAt    DateTime @default(now())
+}
+
+model TranslationRequest {
+  id           Int      @id @default(autoincrement())
+  shop         String
+  requestUid   String
+  contentType  String   @default("product")
+  itemId       String?
+  itemTitle    String?
+  languages    String
+  storeLocale  String?
+  status       String   @default("Pending")
+  isTranslated Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([shop, requestUid])
+}
