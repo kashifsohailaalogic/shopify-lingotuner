@@ -43,6 +43,8 @@ model TranslatorSettings {
   enabled           Boolean  @default(true)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+
+  @@map("translatorsettings")
 }
 
 model TranslationLog {
