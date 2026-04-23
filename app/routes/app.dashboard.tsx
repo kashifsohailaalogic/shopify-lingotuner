@@ -78,65 +78,94 @@ async function getApiSettingsByShop(shop: string): Promise<TranslatorApiSettings
 }
 
 async function getLocalRequestsByShop(shop: string): Promise<RequestRow[]> {
-  return prisma.$queryRaw<RequestRow[]>`
-    SELECT requestUid, languages, storeLocale, contentType, itemId, itemTitle, status, isTranslated, createdAt
-    FROM TranslationRequest
-    WHERE shop = ${shop}
-    ORDER BY createdAt DESC, id DESC
-    LIMIT 200
-  `;
+  const rows = await prisma.translationRequest.findMany({
+    where: { shop },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: 200,
+    select: {
+      requestUid: true,
+      languages: true,
+      storeLocale: true,
+      contentType: true,
+      itemId: true,
+      itemTitle: true,
+      status: true,
+      isTranslated: true,
+      createdAt: true,
+    },
+  });
+  return rows.map((row) => ({
+    ...row,
+    createdAt: row.createdAt.toISOString(),
+  }));
 }
 
 async function getLocalRequestByUid(shop: string, requestUid: string): Promise<RequestLookupRow | null> {
-  const rows = await prisma.$queryRaw<RequestLookupRow[]>`
-    SELECT requestUid, languages, storeLocale, contentType, itemId, itemTitle
-    FROM TranslationRequest
-    WHERE shop = ${shop} AND requestUid = ${requestUid}
-    LIMIT 1
-  `;
-  return rows[0] ?? null;
+  const row = await prisma.translationRequest.findUnique({
+    where: {
+      shop_requestUid: { shop, requestUid },
+    },
+    select: {
+      requestUid: true,
+      languages: true,
+      storeLocale: true,
+      contentType: true,
+      itemId: true,
+      itemTitle: true,
+    },
+  });
+  return row ?? null;
 }
 
 async function upsertLocalRequest(
   shop: string,
   request: Omit<RequestRow, "createdAt">,
 ) {
-  await prisma.$executeRaw`
-    INSERT INTO TranslationRequest (shop, requestUid, languages, storeLocale, contentType, itemId, itemTitle, status, isTranslated, createdAt, updatedAt)
-    VALUES (${shop}, ${request.requestUid}, ${request.languages}, ${request.storeLocale}, ${request.contentType}, ${request.itemId}, ${request.itemTitle}, ${request.status}, ${request.isTranslated}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-    ON CONFLICT(shop, requestUid) DO UPDATE SET
-      languages = excluded.languages,
-      storeLocale = COALESCE(excluded.storeLocale, storeLocale),
-      contentType = excluded.contentType,
-      itemId = COALESCE(excluded.itemId, itemId),
-      itemTitle = COALESCE(excluded.itemTitle, itemTitle),
-      status = excluded.status,
-      isTranslated = excluded.isTranslated,
-      updatedAt = CURRENT_TIMESTAMP
-  `;
+  await prisma.translationRequest.upsert({
+    where: {
+      shop_requestUid: { shop, requestUid: request.requestUid },
+    },
+    update: {
+      languages: request.languages,
+      contentType: request.contentType,
+      status: request.status,
+      isTranslated: request.isTranslated,
+      ...(request.storeLocale !== null ? { storeLocale: request.storeLocale } : {}),
+      ...(request.itemId !== null ? { itemId: request.itemId } : {}),
+      ...(request.itemTitle !== null ? { itemTitle: request.itemTitle } : {}),
+    },
+    create: {
+      shop,
+      requestUid: request.requestUid,
+      languages: request.languages,
+      storeLocale: request.storeLocale,
+      contentType: request.contentType,
+      itemId: request.itemId,
+      itemTitle: request.itemTitle,
+      status: request.status,
+      isTranslated: request.isTranslated,
+    },
+  });
 }
 
 async function markTranslated(shop: string, requestUid: string) {
-  await prisma.$executeRaw`
-    UPDATE TranslationRequest
-    SET isTranslated = 1, updatedAt = CURRENT_TIMESTAMP
-    WHERE shop = ${shop} AND requestUid = ${requestUid}
-  `;
+  await prisma.translationRequest.updateMany({
+    where: { shop, requestUid },
+    data: { isTranslated: true },
+  });
 }
 
 async function deleteLocalRequest(shop: string, requestUid: string) {
-  await prisma.$executeRaw`
-    DELETE FROM TranslationRequest
-    WHERE shop = ${shop} AND requestUid = ${requestUid}
-  `;
+  await prisma.translationRequest.deleteMany({
+    where: { shop, requestUid },
+  });
 }
 
 async function updateLocalRequestStatus(shop: string, requestUid: string, status: string) {
-  await prisma.$executeRaw`
-    UPDATE TranslationRequest
-    SET status = ${status}, updatedAt = CURRENT_TIMESTAMP
-    WHERE shop = ${shop} AND requestUid = ${requestUid}
-  `;
+  await prisma.translationRequest.updateMany({
+    where: { shop, requestUid },
+    data: { status },
+  });
 }
 
 function normalizeBaseUrl(url: string) {

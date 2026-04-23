@@ -18,23 +18,19 @@ export async function insertTranslationLog(input: {
   const metadata =
     input.metadata === undefined ? null : JSON.stringify(input.metadata);
 
-  await prisma.$executeRaw`
-    INSERT INTO TranslationLog (
-      shop, level, contentType, action, message, requestUid, itemId, statusCode, requestBody, responseBody, metadata, createdAt
-    )
-    VALUES (
-      ${input.shop},
-      ${input.level},
-      ${input.contentType ?? "others"},
-      ${input.action},
-      ${input.message},
-      ${input.requestUid ?? null},
-      ${input.itemId ?? null},
-      ${input.statusCode ?? null},
-      ${input.requestBody ?? null},
-      ${input.responseBody ?? null},
-      ${metadata},
-      CURRENT_TIMESTAMP
-    )
-  `;
+  await prisma.translationLog.create({
+    data: {
+      shop: input.shop,
+      level: input.level,
+      contentType: input.contentType ?? "others",
+      action: input.action,
+      message: input.message,
+      requestUid: input.requestUid ?? null,
+      itemId: input.itemId ?? null,
+      statusCode: input.statusCode ?? null,
+      requestBody: input.requestBody ?? null,
+      responseBody: input.responseBody ?? null,
+      metadata,
+    },
+  });
 }
