@@ -57,20 +57,24 @@ function parseCachedLanguages(payload: string | null | undefined): LanguageOptio
 }
 
 async function getCachedLanguagesByShop(shop: string): Promise<LanguageOption[]> {
-  const rows = await prisma.$queryRaw<SettingsRow[]>`
-    SELECT fetchedLanguages FROM TranslatorSettings WHERE shop = ${shop} LIMIT 1
-  `;
-  return parseCachedLanguages(rows[0]?.fetchedLanguages);
+  const row = await prisma.translatorSettings.findUnique({
+    where: { shop },
+    select: { fetchedLanguages: true },
+  });
+  return parseCachedLanguages(row?.fetchedLanguages);
 }
 
 async function getApiSettingsByShop(shop: string): Promise<TranslatorApiSettingsRow | null> {
-  const rows = await prisma.$queryRaw<TranslatorApiSettingsRow[]>`
-    SELECT apiKey, apiBaseUrl, translationEngine, enabled
-    FROM TranslatorSettings
-    WHERE shop = ${shop}
-    LIMIT 1
-  `;
-  return rows[0] ?? null;
+  const row = await prisma.translatorSettings.findUnique({
+    where: { shop },
+    select: {
+      apiKey: true,
+      apiBaseUrl: true,
+      translationEngine: true,
+      enabled: true,
+    },
+  });
+  return row ?? null;
 }
 
 async function getLocalRequestsByShop(shop: string): Promise<RequestRow[]> {

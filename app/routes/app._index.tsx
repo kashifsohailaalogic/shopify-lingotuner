@@ -154,13 +154,17 @@ type TranslatorSettingsRow = {
 };
 
 async function getSettingsByShop(shop: string): Promise<TranslatorSettingsRow | null> {
-  const rows = await prisma.$queryRaw<TranslatorSettingsRow[]>`
-    SELECT apiKey, apiBaseUrl, translationEngine, fetchedLanguages, enabled
-    FROM TranslatorSettings
-    WHERE shop = ${shop}
-    LIMIT 1
-  `;
-  return rows[0] ?? null;
+  const row = await prisma.translatorSettings.findUnique({
+    where: { shop },
+    select: {
+      apiKey: true,
+      apiBaseUrl: true,
+      translationEngine: true,
+      fetchedLanguages: true,
+      enabled: true,
+    },
+  });
+  return row ?? null;
 }
 
 async function upsertSettingsByShop(input: {
@@ -170,25 +174,31 @@ async function upsertSettingsByShop(input: {
   translationEngine: string;
   enabled: boolean;
 }) {
-  await prisma.$executeRaw`
-    INSERT INTO TranslatorSettings (shop, apiKey, apiBaseUrl, translationEngine, enabled, createdAt, updatedAt)
-    VALUES (${input.shop}, ${input.apiKey}, ${input.apiBaseUrl}, ${input.translationEngine}, ${input.enabled}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-    ON CONFLICT(shop) DO UPDATE SET
-      apiKey = excluded.apiKey,
-      apiBaseUrl = excluded.apiBaseUrl,
-      translationEngine = excluded.translationEngine,
-      enabled = excluded.enabled,
-      updatedAt = CURRENT_TIMESTAMP
-  `;
+  await prisma.translatorSettings.upsert({
+    where: { shop: input.shop },
+    update: {
+      apiKey: input.apiKey,
+      apiBaseUrl: input.apiBaseUrl,
+      translationEngine: input.translationEngine,
+      enabled: input.enabled,
+    },
+    create: {
+      shop: input.shop,
+      apiKey: input.apiKey,
+      apiBaseUrl: input.apiBaseUrl,
+      translationEngine: input.translationEngine,
+      enabled: input.enabled,
+    },
+  });
 }
 
 async function saveFetchedLanguagesByShop(shop: string, languages: LanguageOption[]) {
-  await prisma.$executeRaw`
-    UPDATE TranslatorSettings
-    SET fetchedLanguages = ${JSON.stringify(languages)},
-        updatedAt = CURRENT_TIMESTAMP
-    WHERE shop = ${shop}
-  `;
+  await prisma.translatorSettings.updateMany({
+    where: { shop },
+    data: {
+      fetchedLanguages: JSON.stringify(languages),
+    },
+  });
 }
 
 function parseCachedLanguages(payload: string | null | undefined): LanguageOption[] {
