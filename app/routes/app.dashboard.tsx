@@ -447,6 +447,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     })) ?? [];
 
   let localeAccessLimited = false;
+  let localeAccessError: string | null = null;
   let storeLocales: StoreLocaleRow[] = [];
 
   try {
@@ -465,13 +466,21 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       data?: {
         shopLocales?: StoreLocaleRow[];
       };
+      errors?: Array<{ message?: string }>;
     };
+    if (localesJson.errors?.length) {
+      const firstError = localesJson.errors[0]?.message ?? "Shop locales query failed.";
+      localeAccessError = firstError;
+      localeAccessLimited = /access denied|scope|permission/i.test(firstError);
+    }
     storeLocales = (localesJson.data?.shopLocales ?? []).filter((locale) => locale.published);
-  } catch {
-    localeAccessLimited = true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Shop locales query failed.";
+    localeAccessError = message;
+    localeAccessLimited = /access denied|scope|permission/i.test(message);
   }
 
-  return { products, categories, apiLanguages: cachedLanguages, storeLocales, localeAccessLimited, requests };
+  return { products, categories, apiLanguages: cachedLanguages, storeLocales, localeAccessLimited, localeAccessError, requests };
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -1503,7 +1512,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function DashboardRoute() {
-  const { products, categories, apiLanguages, storeLocales, localeAccessLimited, requests: initialRequests } =
+  const { products, categories, apiLanguages, storeLocales, localeAccessLimited, localeAccessError, requests: initialRequests } =
     useLoaderData<typeof loader>();
   const translateFetcher = useFetcher<ActionData>();
   const requestFetcher = useFetcher<ActionData>();
@@ -1792,6 +1801,8 @@ export default function DashboardRoute() {
                 <s-paragraph>
                   {localeAccessLimited
                     ? "Store locales scope is missing. Add read_locales scope and reinstall app."
+                    : localeAccessError
+                      ? `Could not load Shopify locales: ${localeAccessError}`
                     : "No published secondary store language found. Add/publish language in Shopify settings first."}
                 </s-paragraph>
               )}
