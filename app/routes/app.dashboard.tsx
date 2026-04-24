@@ -464,8 +464,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       data?: {
         shopLocales?: StoreLocaleRow[];
       };
+      errors?: Array<{ message?: string }>;
     };
-    storeLocales = (localesJson.data?.shopLocales ?? []).filter((locale) => locale.published);
+    const locales = localesJson.data?.shopLocales ?? [];
+    storeLocales = locales;
+    if (!locales.length && (localesJson.errors?.length ?? 0) > 0) {
+      localeAccessLimited = true;
+    }
   } catch {
     localeAccessLimited = true;
   }
@@ -1788,7 +1793,9 @@ export default function DashboardRoute() {
                   >
                     {selectableStoreLocales.map((locale) => (
                       <option key={locale.locale} value={locale.locale}>
-                        {locale.name} ({locale.locale}){locale.primary ? " - Default" : ""}
+                        {locale.name} ({locale.locale})
+                        {locale.primary ? " - Default" : ""}
+                        {!locale.published ? " - Unpublished" : ""}
                       </option>
                     ))}
                   </select>
