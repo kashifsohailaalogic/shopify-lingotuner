@@ -94,7 +94,17 @@ async function getLocalRequestsByShop(shop: string): Promise<RequestRow[]> {
       createdAt: true,
     },
   });
-  return rows.map((row) => ({
+  return rows.map((row: {
+    requestUid: string;
+    languages: string;
+    storeLocale: string | null;
+    contentType: string;
+    itemId: string | null;
+    itemTitle: string | null;
+    status: string;
+    isTranslated: boolean;
+    createdAt: Date;
+  }) => ({
     ...row,
     createdAt: row.createdAt.toISOString(),
   }));
@@ -464,24 +474,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       data?: {
         shopLocales?: StoreLocaleRow[];
       };
-      errors?: Array<{ message?: string }>;
     };
-    const locales = localesJson.data?.shopLocales ?? [];
-    storeLocales = locales;
-    if (!locales.length && (localesJson.errors?.length ?? 0) > 0) {
-      localeAccessLimited = true;
-    }
+    storeLocales = localesJson.data?.shopLocales ?? [];
   } catch {
     localeAccessLimited = true;
-  }
-
-  if (!storeLocales.length && cachedLanguages.length) {
-    storeLocales = cachedLanguages.map((language) => ({
-      locale: language.code,
-      name: language.name,
-      primary: false,
-      published: true,
-    }));
   }
 
   return { products, categories, apiLanguages: cachedLanguages, storeLocales, localeAccessLimited, requests };
@@ -1793,9 +1789,7 @@ export default function DashboardRoute() {
                   >
                     {selectableStoreLocales.map((locale) => (
                       <option key={locale.locale} value={locale.locale}>
-                        {locale.name} ({locale.locale})
-                        {locale.primary ? " - Default" : ""}
-                        {!locale.published ? " - Unpublished" : ""}
+                        {locale.name} ({locale.locale}){locale.primary ? " - Default" : ""}{!locale.published ? " - Unpublished" : ""}
                       </option>
                     ))}
                   </select>
@@ -1806,8 +1800,8 @@ export default function DashboardRoute() {
               ) : (
                 <s-paragraph>
                   {localeAccessLimited
-                    ? "Store locales scope is missing. Add read_locales scope and reinstall app, or fetch languages in settings."
-                    : "No published secondary store language found. Add/publish language in Shopify settings first."}
+                    ? "Store locales scope is missing. Add read_locales scope and reinstall app."
+                    : "No Shopify language found. Add a language in Shopify admin first."}
                 </s-paragraph>
               )}
             </div>
