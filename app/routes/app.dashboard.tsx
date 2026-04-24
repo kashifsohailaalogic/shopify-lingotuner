@@ -22,6 +22,7 @@ type RequestRow = {
   isTranslated: boolean;
   createdAt: string;
 };
+type RequestDbRow = Omit<RequestRow, "createdAt"> & { createdAt: Date };
 type RequestLookupRow = {
   requestUid: string;
   languages: string;
@@ -78,7 +79,7 @@ async function getApiSettingsByShop(shop: string): Promise<TranslatorApiSettings
 }
 
 async function getLocalRequestsByShop(shop: string): Promise<RequestRow[]> {
-  const rows = await prisma.translationRequest.findMany({
+  const rows: RequestDbRow[] = await prisma.translationRequest.findMany({
     where: { shop },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: 200,
@@ -94,17 +95,7 @@ async function getLocalRequestsByShop(shop: string): Promise<RequestRow[]> {
       createdAt: true,
     },
   });
-  return rows.map((row: {
-    requestUid: string;
-    languages: string;
-    storeLocale: string | null;
-    contentType: string;
-    itemId: string | null;
-    itemTitle: string | null;
-    status: string;
-    isTranslated: boolean;
-    createdAt: Date;
-  }) => ({
+  return rows.map((row: RequestDbRow) => ({
     ...row,
     createdAt: row.createdAt.toISOString(),
   }));
@@ -475,7 +466,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         shopLocales?: StoreLocaleRow[];
       };
     };
-    storeLocales = localesJson.data?.shopLocales ?? [];
+    storeLocales = (localesJson.data?.shopLocales ?? []).filter((locale) => locale.published);
   } catch {
     localeAccessLimited = true;
   }
@@ -1789,7 +1780,7 @@ export default function DashboardRoute() {
                   >
                     {selectableStoreLocales.map((locale) => (
                       <option key={locale.locale} value={locale.locale}>
-                        {locale.name} ({locale.locale}){locale.primary ? " - Default" : ""}{!locale.published ? " - Unpublished" : ""}
+                        {locale.name} ({locale.locale}){locale.primary ? " - Default" : ""}
                       </option>
                     ))}
                   </select>
@@ -1801,7 +1792,7 @@ export default function DashboardRoute() {
                 <s-paragraph>
                   {localeAccessLimited
                     ? "Store locales scope is missing. Add read_locales scope and reinstall app."
-                    : "No Shopify language found. Add a language in Shopify admin first."}
+                    : "No published secondary store language found. Add/publish language in Shopify settings first."}
                 </s-paragraph>
               )}
             </div>
