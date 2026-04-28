@@ -18,18 +18,21 @@ type LogRow = {
   metadata: string | null;
   createdAt: string;
 };
+type LogDbRow = Omit<LogRow, "createdAt"> & { createdAt: Date };
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const url = new URL(request.url);
   const level = url.searchParams.get("level") ?? "";
   const action = (url.searchParams.get("action") ?? "").trim();
+  const contentType = (url.searchParams.get("contentType") ?? "").trim();
 
   const rows = await prisma.translationLog.findMany({
     where: {
       shop: session.shop,
       ...(level ? { level: { equals: level, mode: "insensitive" } } : {}),
       ...(action ? { action: { contains: action, mode: "insensitive" } } : {}),
+      ...(contentType ? { contentType: { equals: contentType, mode: "insensitive" } } : {}),
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: 300,
@@ -48,12 +51,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       createdAt: true,
     },
   });
-  const logs: LogRow[] = rows.map((row) => ({
+  const logs: LogRow[] = rows.map((row: LogDbRow) => ({
     ...row,
     createdAt: row.createdAt.toISOString(),
   }));
 
-  return { logs, filters: { level, action } };
+  return { logs, filters: { level, action, contentType } };
 };
 
 export default function LogsPage() {
@@ -118,6 +121,22 @@ export default function LogsPage() {
                 defaultValue={filters.action}
                 style={{ minWidth: "180px", padding: "6px" }}
               />
+            </label>
+            <label>
+              Type{" "}
+              <select
+                name="contentType"
+                defaultValue={filters.contentType}
+                style={{ minWidth: "140px", padding: "6px" }}
+              >
+                <option value="">All</option>
+                <option value="product">Product</option>
+                <option value="category">Category</option>
+                <option value="categories">Categories</option>
+                <option value="attribute">Attribute</option>
+                <option value="attribute_value">Attribute Value</option>
+                <option value="others">Others</option>
+              </select>
             </label>
             <s-button type="submit">Filter</s-button>
           </div>
